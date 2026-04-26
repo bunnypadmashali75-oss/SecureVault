@@ -1,0 +1,100 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information and settings",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string" },
+        "displayName": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "lastLogin": { "type": "string", "format": "date-time" },
+        "securityScore": { "type": "number" }
+      },
+      "required": ["uid", "email"]
+    },
+    "SecureFile": {
+      "title": "Secure File",
+      "description": "Metadata for an encrypted file stored on the server",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "size": { "type": "number" },
+        "serverId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "name", "serverId"]
+    },
+    "PasswordEntry": {
+      "title": "Password Entry",
+      "description": "An encrypted password manager entry",
+      "type": "object",
+      "properties": {
+        "ownerId": { "type": "string" },
+        "title": { "type": "string" },
+        "username": { "type": "string" },
+        "encryptedPassword": { "type": "string" },
+        "url": { "type": "string" },
+        "strength": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["ownerId", "title", "encryptedPassword"]
+    },
+    "LoginActivity": {
+      "title": "Login Activity",
+      "description": "Record of a login attempt or session",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" },
+        "ip": { "type": "string" },
+        "userAgent": { "type": "string" },
+        "location": { "type": "string" },
+        "deviceType": { "type": "string" },
+        "status": { "type": "string", "enum": ["success", "failed", "blocked"] },
+        "anomalyScore": { "type": "number" }
+      },
+      "required": ["userId", "timestamp"]
+    },
+    "SecurityAlert": {
+      "title": "Security Alert",
+      "description": "AI-generated security notification",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "type": { "type": "string", "enum": ["potential_compromise", "unusual_location", "weak_password", "brute_force"] },
+        "severity": { "type": "string", "enum": ["low", "medium", "high", "critical"] },
+        "message": { "type": "string" },
+        "activityId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "resolved": { "type": "boolean" }
+      },
+      "required": ["userId", "type", "severity", "message"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile documents"
+    },
+    "users/{userId}/files/{fileId}": {
+      "schema": "SecureFile",
+      "description": "Encrypted files belonging to a user"
+    },
+    "users/{userId}/passwords/{passwordId}": {
+      "schema": "PasswordEntry",
+      "description": "Encrypted passwords belonging to a user"
+    },
+    "users/{userId}/activity/{activityId}": {
+      "schema": "LoginActivity",
+      "description": "Login history for a user"
+    },
+    "users/{userId}/alerts/{alertId}": {
+      "schema": "SecurityAlert",
+      "description": "Security alerts for a user"
+    }
+  }
+}

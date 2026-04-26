@@ -1,0 +1,100 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 0. Global Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // --- Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // --- Entity Validations ---
+
+    function isValidUser(data) {
+      return data.uid == request.auth.uid 
+        && data.email is string && data.email.size() <= 256
+        && (data.displayName == null || (data.displayName is string && data.displayName.size() <= 100))
+        && data.keys().hasAll(['uid', 'email']);
+    }
+
+    function isValidFile(data) {
+      return data.ownerId == request.auth.uid
+        && data.name is string && data.name.size() <= 255
+        && data.serverId is string && data.serverId.size() <= 128
+        && data.keys().hasAll(['ownerId', 'name', 'serverId']);
+    }
+
+    function isValidPassword(data) {
+      return data.ownerId == request.auth.uid
+        && data.title is string && data.title.size() <= 100
+        && data.encryptedPassword is string && data.encryptedPassword.size() <= 5000
+        && data.keys().hasAll(['ownerId', 'title', 'encryptedPassword']);
+    }
+
+    function isValidActivity(data) {
+      return data.userId == request.auth.uid
+        && data.timestamp is string
+        && data.keys().hasAll(['userId', 'timestamp']);
+    }
+
+    // --- Collections ---
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidUser(incoming());
+      allow update: if isOwner(userId) && isValidUser(incoming()) 
+        && incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'lastLogin', 'securityScore']);
+
+      match /files/{fileId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidFile(incoming());
+        allow delete: if isOwner(userId);
+      }
+
+      match /passwords/{passwordId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidPassword(incoming());
+        allow update: if isOwner(userId) && isValidPassword(incoming())
+          && incoming().diff(existing()).affectedKeys().hasOnly(['title', 'username', 'encryptedPassword', 'url', 'strength']);
+        allow delete: if isOwner(userId);
+      }
+
+      match /activity/{activityId} {
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidActivity(incoming());
+        // Activity logs are immutable
+        allow update, delete: if false;
+      }
+
+      match /alerts/{alertId} {
+        allow list: if isOwner(userId);
+        allow get: if isOwner(userId);
+        // Only system can create alerts in a real app via admin SDK
+        // For this demo, we allow the client to create them if they belong to them (not ideal for prod but needed for pure browser demo)
+        allow create: if isOwner(userId); 
+        allow update: if isOwner(userId) && incoming().diff(existing()).affectedKeys().hasOnly(['resolved']);
+      }
+    }
+  }
+}
